@@ -1,5 +1,42 @@
-# This is a boilerplate parameters config generated for pipeline 'data_processing'
-# using Kedro 1.7.0.
-#
-# Documentation for this file format can be found in "Parameters"
-# Link: https://docs.kedro.org/en/1.7.0/configuration/parameters.html
+# Parámetros del pipeline 'data_processing'.
+# Decisiones justificadas en notebooks/01_exploracion.ipynb (sección 7).
+
+data_processing:
+  llave: Customer ID
+  objetivo: Churn Value
+
+  # Faltantes por regla de negocio: se reemplazan por su propia categoría
+  # (no se imputan con media/moda porque el dato "no aplica").
+  valores_faltantes:
+    Offer: "None"                 # el cliente no aceptó ninguna oferta
+    Internet Type: "No Internet"  # el cliente no tiene internet
+
+  # Columnas que no se usan como predictores, agrupadas por motivo.
+  columnas_a_eliminar:
+    identificador:
+      - Location ID
+      - Service ID
+      - Status ID
+    constante:
+      - Count
+      - Country
+      - State
+      - Quarter
+    redundante:
+      - Under 30
+      - Senior Citizen
+      - Dependents
+      - Lat Long
+      - Churn Label
+      - Referred a Friend
+    fuga_de_datos:
+      - Customer Status
+      - Churn Category
+      - Churn Reason
+      - Churn Score
+      - Satisfaction Score
+    solo_impacto_economico:
+      - CLTV
+    alta_cardinalidad:
+      - City
+      - Zip Code

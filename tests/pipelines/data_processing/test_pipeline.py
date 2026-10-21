@@ -4,8 +4,11 @@ import pandas as pd
 import pytest
 
 from telco_churn.pipelines.data_processing.nodes import (
+    eliminar_columnas,
     preparar_poblacion,
+    rellenar_faltantes,
     unir_tablas,
+    validar_datos_limpios,
 )
 
 
@@ -80,3 +83,64 @@ def test_unir_tablas_falla_si_se_pierden_clientes(tablas_crudas):
 
     with pytest.raises(ValueError, match="perdió clientes"):
         unir_tablas(**tablas_crudas)
+
+
+@pytest.fixture
+def clientes() -> pd.DataFrame:
+    """Tabla de clientes ya unida, con faltantes de negocio."""
+    return pd.DataFrame(
+        {
+            "Customer ID": ["0001-A", "0002-B", "0003-C"],
+            "Offer": ["Offer A", None, None],
+            "Internet Type": ["DSL", None, "Cable"],
+            "Churn Score": [90, 20, 50],
+            "Count": [1, 1, 1],
+            "Churn Value": [1, 0, 0],
+        }
+    )
+
+
+def test_rellenar_faltantes_usa_la_categoria_configurada(clientes):
+    resultado = rellenar_faltantes(
+        clientes, {"Offer": "None", "Internet Type": "No Internet"}
+    )
+
+    assert resultado["Offer"].tolist() == ["Offer A", "None", "None"]
+    assert resultado["Internet Type"].tolist() == ["DSL", "No Internet", "Cable"]
+
+
+def test_rellenar_faltantes_falla_si_la_columna_no_existe(clientes):
+    with pytest.raises(KeyError, match="no encontradas"):
+        rellenar_faltantes(clientes, {"Columna Inexistente": "x"})
+
+
+def test_eliminar_columnas_quita_todos_los_grupos(clientes):
+    resultado = eliminar_columnas(
+        clientes, {"fuga_de_datos": ["Churn Score"], "constante": ["Count"]}
+    )
+
+    assert "Churn Score" not in resultado.columns
+    assert "Count" not in resultado.columns
+    assert "Churn Value" in resultado.columns
+
+
+def test_validar_datos_limpios_acepta_datos_correctos(clientes):
+    limpios = clientes.fillna("None")
+
+    resultado = validar_datos_limpios(limpios, "Customer ID", "Churn Value")
+
+    pd.testing.assert_frame_equal(resultado, limpios)
+
+
+@pytest.mark.parametrize(
+    ("modificar", "mensaje"),
+    [
+        (lambda df: pd.concat([df, df.iloc[[0]]]), "duplicados"),
+        (lambda df: df, "valores faltantes"),
+        (lambda df: df.fillna("None").assign(**{"Churn Value": [1, 0, 2]}), "binaria"),
+    ],
+    ids=["llave_duplicada", "faltantes", "objetivo_no_binario"],
+)
+def test_validar_datos_limpios_detecta_errores(clientes, modificar, mensaje):
+    with pytest.raises(ValueError, match=mensaje):
+        validar_datos_limpios(modificar(clientes), "Customer ID", "Churn Value")

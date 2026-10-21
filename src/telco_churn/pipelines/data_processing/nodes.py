@@ -77,3 +77,82 @@ def unir_tablas(
     return clientes.merge(
         population, on=LLAVE_POBLACION, how="left", validate="many_to_one"
     )
+
+
+def rellenar_faltantes(
+    clientes: pd.DataFrame, valores_faltantes: dict[str, str]
+) -> pd.DataFrame:
+    """Reemplaza los faltantes que tienen significado de negocio por una categoría.
+
+    Por ejemplo, ``Offer`` vacío significa que el cliente no aceptó ninguna
+    oferta. Se usa una categoría propia en lugar de imputar con media o moda,
+    para no inventar información.
+
+    Args:
+        clientes: Tabla de clientes unida.
+        valores_faltantes: Columna -> valor con el que se reemplazan sus vacíos.
+
+    Returns:
+        Tabla con esas columnas sin valores faltantes.
+
+    Raises:
+        KeyError: Si alguna columna configurada no existe en la tabla.
+    """
+    no_encontradas = set(valores_faltantes) - set(clientes.columns)
+    if no_encontradas:
+        raise KeyError(f"Columnas no encontradas: {sorted(no_encontradas)}")
+    return clientes.fillna(valores_faltantes)
+
+
+def eliminar_columnas(
+    clientes: pd.DataFrame, columnas_a_eliminar: dict[str, list[str]]
+) -> pd.DataFrame:
+    """Elimina las columnas que no se usan como predictores.
+
+    Args:
+        clientes: Tabla de clientes.
+        columnas_a_eliminar: Listas de columnas agrupadas por motivo
+            (identificador, constante, redundante, fuga de datos, etc.).
+
+    Returns:
+        Tabla sin esas columnas.
+
+    Raises:
+        KeyError: Si alguna columna configurada no existe en la tabla.
+    """
+    columnas = [c for grupo in columnas_a_eliminar.values() for c in grupo]
+    return clientes.drop(columns=columnas)
+
+
+def validar_datos_limpios(
+    clientes: pd.DataFrame, llave: str, objetivo: str
+) -> pd.DataFrame:
+    """Verifica la calidad de la tabla limpia antes de guardarla.
+
+    Detiene el pipeline si los datos cambian y dejan de cumplir lo que se
+    observó en la exploración, en lugar de entrenar con datos incorrectos.
+
+    Args:
+        clientes: Tabla limpia.
+        llave: Columna que identifica a cada cliente.
+        objetivo: Columna de la variable objetivo.
+
+    Returns:
+        La misma tabla, sin cambios, si pasa todas las validaciones.
+
+    Raises:
+        ValueError: Si hay llaves duplicadas, valores faltantes o el objetivo
+            no es binario (0/1).
+    """
+    errores = []
+    if clientes[llave].duplicated().any():
+        errores.append(f"'{llave}' tiene valores duplicados")
+    faltantes = clientes.columns[clientes.isna().any()].tolist()
+    if faltantes:
+        errores.append(f"columnas con valores faltantes: {faltantes}")
+    if not set(clientes[objetivo].unique()) <= {0, 1}:
+        errores.append(f"'{objetivo}' no es binaria (0/1)")
+
+    if errores:
+        raise ValueError("Datos limpios inválidos: " + "; ".join(errores))
+    return clientes
