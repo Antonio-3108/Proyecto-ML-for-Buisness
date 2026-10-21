@@ -32,3 +32,9 @@ raw_telco_churn:
 raw_customer_churn:
   type: pandas.CSVDataset
   filepath: data/01_raw/CustomerChurn.csv
+
+# --- Intermediate: tablas unidas (pipeline data_processing) ---------------------
+
+clientes_unidos:
+  type: pandas.ParquetDataset
+  filepath: data/02_intermediate/clientes_unidos.parquet
