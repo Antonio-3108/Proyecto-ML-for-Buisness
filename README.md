@@ -7,8 +7,20 @@ Machine Learning para identificar clientes con riesgo de abandonar (churn) una
 empresa de telecomunicaciones, siguiendo la metodología CRISP-DM e implementado
 como un proyecto Kedro reproducible.
 
-> **Estado:** en desarrollo. Las secciones de problema de negocio, resultados y
-> recomendaciones se completan conforme avanza el proyecto.
+> **Estado:** en desarrollo. Las secciones de resultados y recomendaciones se
+> completan conforme avanza el proyecto.
+
+## Problema de negocio
+
+**Pregunta:** ¿qué clientes tienen mayor probabilidad de cancelar su servicio,
+para que el equipo de retención los contacte primero?
+
+- **Stakeholder:** Gerencia de Retención de Clientes (CRM).
+- **Objetivo analítico:** clasificación binaria (churn sí / no).
+- **Métrica de éxito:** recall de la clase churn y PR-AUC, más el ahorro neto
+  de la campaña frente a contactar clientes al azar.
+
+Detalle completo en [docs/problema_de_negocio.md](docs/problema_de_negocio.md).
 
 ## Dataset
 
