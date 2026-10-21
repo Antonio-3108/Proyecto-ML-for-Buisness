@@ -87,8 +87,8 @@ pytest
 
 ## Autores
 
-- Michelle Santos
-- Antonio
+- Cynthia Santos
+- Antonio Valdez
 
 ## Fuentes
 
