@@ -1,0 +1,34 @@
+# Data Catalog: https://docs.kedro.org/en/stable/catalog-data/introduction/
+#
+# Raw data: IBM Telco Customer Churn (Kaggle, aadityabansalcodes).
+# https://www.kaggle.com/datasets/aadityabansalcodes/telecommunications-industry-customer-churn-dataset
+# The split tables share the key `Customer ID` (population joins on `Zip Code`).
+
+raw_demographics:
+  type: pandas.CSVDataset
+  filepath: data/01_raw/Telco_customer_churn_demographics.csv
+
+raw_location:
+  type: pandas.CSVDataset
+  filepath: data/01_raw/Telco_customer_churn_location.csv
+
+raw_population:
+  type: pandas.CSVDataset
+  filepath: data/01_raw/Telco_customer_churn_population.csv
+
+raw_services:
+  type: pandas.CSVDataset
+  filepath: data/01_raw/Telco_customer_churn_services.csv
+
+raw_status:
+  type: pandas.CSVDataset
+  filepath: data/01_raw/Telco_customer_churn_status.csv
+
+# Consolidated versions of the same customers (kept for reference / cross-checks)
+raw_telco_churn:
+  type: pandas.CSVDataset
+  filepath: data/01_raw/Telco_customer_churn.csv
+
+raw_customer_churn:
+  type: pandas.CSVDataset
+  filepath: data/01_raw/CustomerChurn.csv
