@@ -1,0 +1,28 @@
+# Parámetros del pipeline 'feature_engineering'.
+# Variables evaluadas en notebooks/01_exploracion.ipynb (secciones 6 y 7).
+
+feature_engineering:
+  # Clientes con esta antigüedad o menos tienen 53 % de churn (vs. 19 %).
+  meses_cliente_nuevo: 6
+
+  # Columnas Sí/No que cuentan como servicio contratado (num_servicios).
+  servicios:
+    - Phone Service
+    - Multiple Lines
+    - Internet Service
+    - Online Security
+    - Online Backup
+    - Device Protection Plan
+    - Premium Tech Support
+    - Streaming TV
+    - Streaming Movies
+    - Streaming Music
+    - Unlimited Data
+
+  # Servicios de seguridad y soporte (servicios_proteccion): entre clientes con
+  # internet, el churn baja de 57 % (0 servicios) a 5 % (4 servicios).
+  servicios_proteccion:
+    - Online Security
+    - Online Backup
+    - Device Protection Plan
+    - Premium Tech Support

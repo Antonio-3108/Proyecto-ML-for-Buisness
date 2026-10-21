@@ -44,3 +44,9 @@ clientes_unidos:
 clientes_limpios:
   type: pandas.ParquetDataset
   filepath: data/03_primary/clientes_limpios.parquet
+
+# --- Feature: variables para el modelo (pipeline feature_engineering) ------------
+
+features_clientes:
+  type: pandas.ParquetDataset
+  filepath: data/04_feature/features_clientes.parquet

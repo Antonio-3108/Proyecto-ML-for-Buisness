@@ -7,6 +7,7 @@ from kedro.framework.startup import bootstrap_project
 
 CLIENTES_EN_DATOS_CRUDOS = 7043
 COLUMNAS_LIMPIAS = 35  # 33 predictores + llave + objetivo
+VARIABLES_NUEVAS = 3  # cliente_nuevo, num_servicios, servicios_proteccion
 
 
 def test_kedro_run_genera_tablas_de_clientes():
@@ -18,6 +19,7 @@ def test_kedro_run_genera_tablas_de_clientes():
         catalog = session.load_context().catalog
         unidos = catalog.load("clientes_unidos")
         limpios = catalog.load("clientes_limpios")
+        features = catalog.load("features_clientes")
         fuga_de_datos = catalog.load("params:data_processing")["columnas_a_eliminar"][
             "fuga_de_datos"
         ]
@@ -28,3 +30,17 @@ def test_kedro_run_genera_tablas_de_clientes():
     assert limpios.shape == (CLIENTES_EN_DATOS_CRUDOS, COLUMNAS_LIMPIAS)
     assert limpios.notna().all().all()
     assert not set(fuga_de_datos) & set(limpios.columns)
+
+    assert features.shape == (
+        CLIENTES_EN_DATOS_CRUDOS,
+        COLUMNAS_LIMPIAS + VARIABLES_NUEVAS,
+    )
+    assert features.drop(columns="Customer ID").select_dtypes(
+        exclude="number"
+    ).columns.tolist() == [
+        "Gender",
+        "Offer",
+        "Internet Type",
+        "Contract",
+        "Payment Method",
+    ]
