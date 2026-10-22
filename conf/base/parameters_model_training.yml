@@ -1,0 +1,21 @@
+# Parámetros del pipeline 'model_training'.
+
+model_training:
+  division:
+    llave: Customer ID
+    objetivo: Churn Value
+    test_size: 0.2       # 80 % entrenamiento, 20 % prueba
+    random_state: 42     # semilla fija para resultados reproducibles
+
+  # Totales acumulados muy correlacionados con la antigüedad (0.67-0.97).
+  # Excluirlos no cambia el ROC-AUC (0.903) y da coeficientes más estables.
+  columnas_excluidas_lineal:
+    - Total Charges
+    - Total Revenue
+    - Total Long Distance Charges
+
+  regresion_logistica:
+    class_weight: balanced   # compensa el desbalance (26.5 % churn)
+    C: 1.0                   # fuerza de la regularización (menor = más fuerte)
+    max_iter: 1000
+    random_state: 42

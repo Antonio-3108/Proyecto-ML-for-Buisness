@@ -1,0 +1,10 @@
+# Parámetros del pipeline 'model_evaluation'.
+
+model_evaluation:
+  # Probabilidad a partir de la cual un cliente se clasifica como churn.
+  umbral: 0.5
+
+  # Línea base de negocio: contactar a todos los clientes que cumplen esta regla.
+  regla_negocio:
+    columna: Contract
+    valor: Month-to-Month

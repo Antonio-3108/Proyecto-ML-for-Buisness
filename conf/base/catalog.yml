@@ -50,3 +50,39 @@ clientes_limpios:
 features_clientes:
   type: pandas.ParquetDataset
   filepath: data/04_feature/features_clientes.parquet
+
+# --- Model input: división train/test (pipeline model_training) -----------------
+
+X_train:
+  type: pandas.ParquetDataset
+  filepath: data/05_model_input/X_train.parquet
+  save_args:
+    index: true
+
+X_test:
+  type: pandas.ParquetDataset
+  filepath: data/05_model_input/X_test.parquet
+  save_args:
+    index: true
+
+y_train:
+  type: pickle.PickleDataset
+  filepath: data/05_model_input/y_train.pkl
+
+y_test:
+  type: pickle.PickleDataset
+  filepath: data/05_model_input/y_test.pkl
+
+# --- Models ----------------------------------------------------------------------
+
+modelo_regresion_logistica:
+  type: pickle.PickleDataset
+  filepath: data/06_models/modelo_regresion_logistica.pkl
+
+# --- Reporting: evaluación (pipeline model_evaluation) ---------------------------
+
+comparacion_modelos:
+  type: pandas.CSVDataset
+  filepath: data/08_reporting/comparacion_modelos.csv
+  save_args:
+    index: false

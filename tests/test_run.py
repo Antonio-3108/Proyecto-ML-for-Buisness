@@ -20,6 +20,7 @@ def test_kedro_run_genera_tablas_de_clientes():
         unidos = catalog.load("clientes_unidos")
         limpios = catalog.load("clientes_limpios")
         features = catalog.load("features_clientes")
+        comparacion = catalog.load("comparacion_modelos").set_index("modelo")
         fuga_de_datos = catalog.load("params:data_processing")["columnas_a_eliminar"][
             "fuga_de_datos"
         ]
@@ -44,3 +45,8 @@ def test_kedro_run_genera_tablas_de_clientes():
         "Contract",
         "Payment Method",
     ]
+
+    # El modelo debe superar a las líneas base en la métrica principal (PR-AUC)
+    regresion_logistica = comparacion.loc["Regresión logística"]
+    lineas_base = comparacion.drop(index="Regresión logística")
+    assert (regresion_logistica["pr_auc"] > lineas_base["pr_auc"]).all()
