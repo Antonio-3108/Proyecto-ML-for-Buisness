@@ -1,5 +1,7 @@
 """Nodos del pipeline de evaluación: líneas base, métricas y comparación."""
 
+from typing import Any
+
 import pandas as pd
 from sklearn.metrics import (
     accuracy_score,
@@ -67,36 +69,49 @@ def evaluar_lineas_base(
 
 
 def evaluar_modelo(
-    modelo: Pipeline, X_test: pd.DataFrame, y_test: pd.Series, umbral: float
-) -> dict[str, float]:
+    modelo: Pipeline,
+    busqueda: dict[str, Any],
+    X_test: pd.DataFrame,
+    y_test: pd.Series,
+    umbral: float,
+) -> dict[str, Any]:
     """Evalúa un modelo entrenado en el conjunto de prueba.
 
     Args:
         modelo: Modelo de scikit-learn con ``predict_proba``.
+        busqueda: Resumen de GridSearchCV (nombre, mejores hiperparámetros y
+            puntaje de validación cruzada).
         X_test: Variables de prueba.
         y_test: Objetivo de prueba.
         umbral: Probabilidad a partir de la cual se predice churn.
 
     Returns:
-        Métricas del modelo.
+        Nombre del modelo, métricas en prueba y resumen de la búsqueda.
     """
     probabilidad = pd.Series(modelo.predict_proba(X_test)[:, 1], index=y_test.index)
-    return calcular_metricas(y_test, (probabilidad >= umbral).astype(int), probabilidad)
+    metricas = calcular_metricas(
+        y_test, (probabilidad >= umbral).astype(int), probabilidad
+    )
+    return {
+        **metricas,
+        **busqueda,
+        "mejores_hiperparametros": str(busqueda["mejores_hiperparametros"]),
+    }
 
 
 def comparar_modelos(
-    lineas_base: pd.DataFrame, metricas_regresion_logistica: dict[str, float]
+    lineas_base: pd.DataFrame, *evaluaciones: dict[str, Any]
 ) -> pd.DataFrame:
     """Reúne las métricas de las líneas base y los modelos en una tabla.
 
     Args:
-        lineas_base: Métricas de las líneas base.
-        metricas_regresion_logistica: Métricas de la regresión logística.
+        lineas_base: Métricas de las líneas base (una fila por línea base).
+        *evaluaciones: Resultado de ``evaluar_modelo`` para cada modelo.
 
     Returns:
-        Tabla de comparación, una fila por modelo, redondeada a 3 decimales.
+        Tabla de comparación, una fila por modelo, con las métricas
+        redondeadas a 3 decimales.
     """
-    modelos = pd.DataFrame({"Regresión logística": metricas_regresion_logistica}).T
-    return (
-        pd.concat([lineas_base, modelos]).rename_axis("modelo").reset_index().round(3)
-    )
+    modelos = pd.DataFrame(list(evaluaciones)).set_index("modelo")
+    tabla = pd.concat([lineas_base, modelos]).rename_axis("modelo").reset_index()
+    return tabla.round(3)

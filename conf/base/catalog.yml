@@ -75,9 +75,15 @@ y_test:
 
 # --- Models ----------------------------------------------------------------------
 
-modelo_regresion_logistica:
+# Un modelo por candidato (modelo_regresion_logistica, modelo_random_forest, ...)
+"modelo_{nombre}":
   type: pickle.PickleDataset
-  filepath: data/06_models/modelo_regresion_logistica.pkl
+  filepath: data/06_models/modelo_{nombre}.pkl
+
+# Resumen de GridSearchCV de cada modelo (mejores hiperparámetros y puntaje)
+"busqueda_{nombre}":
+  type: json.JSONDataset
+  filepath: data/08_reporting/busqueda_{nombre}.json
 
 # --- Reporting: evaluación (pipeline model_evaluation) ---------------------------
 

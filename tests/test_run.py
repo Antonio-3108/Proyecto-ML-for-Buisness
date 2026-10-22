@@ -8,6 +8,7 @@ from kedro.framework.startup import bootstrap_project
 CLIENTES_EN_DATOS_CRUDOS = 7043
 COLUMNAS_LIMPIAS = 35  # 33 predictores + llave + objetivo
 VARIABLES_NUEVAS = 3  # cliente_nuevo, num_servicios, servicios_proteccion
+MODELOS_CANDIDATOS = 3
 
 
 def test_kedro_run_genera_tablas_de_clientes():
@@ -46,7 +47,9 @@ def test_kedro_run_genera_tablas_de_clientes():
         "Payment Method",
     ]
 
-    # El modelo debe superar a las líneas base en la métrica principal (PR-AUC)
-    regresion_logistica = comparacion.loc["Regresión logística"]
-    lineas_base = comparacion.drop(index="Regresión logística")
-    assert (regresion_logistica["pr_auc"] > lineas_base["pr_auc"]).all()
+    # Cada modelo debe superar a las líneas base en la métrica principal (PR-AUC)
+    es_linea_base = comparacion.index.str.startswith("Línea base")
+    lineas_base = comparacion[es_linea_base]
+    modelos = comparacion[~es_linea_base]
+    assert len(modelos) == MODELOS_CANDIDATOS
+    assert (modelos["pr_auc"] > lineas_base["pr_auc"].max()).all()

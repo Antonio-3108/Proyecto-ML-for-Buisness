@@ -7,15 +7,59 @@ model_training:
     test_size: 0.2       # 80 % entrenamiento, 20 % prueba
     random_state: 42     # semilla fija para resultados reproducibles
 
-  # Totales acumulados muy correlacionados con la antigüedad (0.67-0.97).
-  # Excluirlos no cambia el ROC-AUC (0.903) y da coeficientes más estables.
-  columnas_excluidas_lineal:
-    - Total Charges
-    - Total Revenue
-    - Total Long Distance Charges
-
-  regresion_logistica:
-    class_weight: balanced   # compensa el desbalance (26.5 % churn)
-    C: 1.0                   # fuerza de la regularización (menor = más fuerte)
-    max_iter: 1000
+  # Ajuste de hiperparámetros con GridSearchCV sobre los datos de entrenamiento.
+  validacion_cruzada:
+    n_splits: 5                   # 5 particiones estratificadas
+    scoring: average_precision    # PR-AUC: adecuada con clases desbalanceadas
     random_state: 42
+
+  # Modelos candidatos. Cada uno define:
+  #   algoritmo:          clave del algoritmo (ver ALGORITMOS en nodes.py)
+  #   escalar_numericas:  estandarizar variables numéricas (necesario en modelos lineales)
+  #   columnas_excluidas: columnas que el modelo no usa
+  #   hiperparametros:    valores fijos
+  #   rejilla:            valores que GridSearchCV prueba (todas las combinaciones)
+  modelos:
+    regresion_logistica:
+      nombre: Regresión logística
+      algoritmo: regresion_logistica
+      escalar_numericas: true
+      # Totales acumulados muy correlacionados con la antigüedad (0.67-0.97).
+      # Excluirlos no cambia el ROC-AUC (0.903) y da coeficientes más estables.
+      columnas_excluidas:
+        - Total Charges
+        - Total Revenue
+        - Total Long Distance Charges
+      hiperparametros:
+        class_weight: balanced    # compensa el desbalance (26.5 % churn)
+        max_iter: 2000
+        random_state: 42
+      rejilla:
+        C: [0.01, 0.1, 1, 10, 100]   # menor C = regularización más fuerte
+
+    random_forest:
+      nombre: Random Forest
+      algoritmo: random_forest
+      escalar_numericas: false
+      columnas_excluidas: []
+      hiperparametros:
+        n_estimators: 300
+        class_weight: balanced
+        random_state: 42
+        n_jobs: -1
+      rejilla:
+        max_depth: [6, 10, null]          # null = sin límite de profundidad
+        min_samples_leaf: [1, 5, 20]
+
+    gradient_boosting:
+      nombre: Gradient Boosting
+      algoritmo: gradient_boosting
+      escalar_numericas: false
+      columnas_excluidas: []
+      hiperparametros:
+        class_weight: balanced
+        random_state: 42
+      rejilla:
+        learning_rate: [0.05, 0.1]
+        max_depth: [3, 6, null]
+        max_iter: [200, 400]

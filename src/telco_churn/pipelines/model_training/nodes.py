@@ -4,10 +4,18 @@ from typing import Any
 
 import pandas as pd
 from sklearn.compose import ColumnTransformer
+from sklearn.ensemble import HistGradientBoostingClassifier, RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import GridSearchCV, StratifiedKFold, train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
+
+# Algoritmos disponibles para los modelos definidos en parameters_model_training.yml
+ALGORITMOS = {
+    "regresion_logistica": LogisticRegression,
+    "random_forest": RandomForestClassifier,
+    "gradient_boosting": HistGradientBoostingClassifier,
+}
 
 
 def dividir_datos(
@@ -40,13 +48,15 @@ def dividir_datos(
 
 
 def crear_preprocesador(
-    X: pd.DataFrame, columnas_excluidas: list[str]
+    X: pd.DataFrame, columnas_excluidas: list[str], escalar_numericas: bool
 ) -> ColumnTransformer:
-    """Crea el preprocesamiento para modelos lineales.
+    """Crea el preprocesamiento de las variables.
 
     - Categóricas (texto): *one-hot encoding*. Categorías no vistas en
       entrenamiento se ignoran en lugar de causar un error.
-    - Numéricas: estandarización (media 0, desviación 1).
+    - Numéricas: estandarización (media 0, desviación 1) si
+      ``escalar_numericas`` es verdadero (modelos lineales); los modelos de
+      árboles las usan sin cambios.
     - ``columnas_excluidas``: se eliminan (por ejemplo, totales acumulados muy
       correlacionados con la antigüedad).
 
@@ -56,6 +66,7 @@ def crear_preprocesador(
     Args:
         X: Datos de entrada, para identificar el tipo de cada columna.
         columnas_excluidas: Columnas que el modelo no usa.
+        escalar_numericas: Si se estandarizan las variables numéricas.
 
     Returns:
         ``ColumnTransformer`` sin ajustar.
@@ -66,37 +77,76 @@ def crear_preprocesador(
     return ColumnTransformer(
         [
             ("categoricas", OneHotEncoder(handle_unknown="ignore"), categoricas),
-            ("numericas", StandardScaler(), numericas),
+            (
+                "numericas",
+                StandardScaler() if escalar_numericas else "passthrough",
+                numericas,
+            ),
         ],
         remainder="drop",
         verbose_feature_names_out=False,
     )
 
 
-def entrenar_regresion_logistica(
+def entrenar_modelo(
     X_train: pd.DataFrame,
     y_train: pd.Series,
-    columnas_excluidas: list[str],
-    hiperparametros: dict[str, Any],
-) -> Pipeline:
-    """Entrena una regresión logística con su preprocesamiento.
+    configuracion: dict[str, Any],
+    validacion_cruzada: dict[str, Any],
+) -> tuple[Pipeline, dict[str, Any]]:
+    """Entrena un modelo ajustando sus hiperparámetros con GridSearchCV.
 
-    Es el primer modelo: simple, rápido e interpretable (cada coeficiente indica
-    si una variable aumenta o reduce el riesgo de churn).
+    Prueba todas las combinaciones de la ``rejilla`` con validación cruzada
+    estratificada sobre los datos de entrenamiento, elige la mejor según la
+    métrica configurada y reentrena con todos los datos de entrenamiento. El
+    conjunto de prueba no se usa aquí.
 
     Args:
         X_train: Variables de entrenamiento.
         y_train: Objetivo de entrenamiento.
-        columnas_excluidas: Columnas que el modelo no usa.
-        hiperparametros: Argumentos para ``LogisticRegression``.
+        configuracion: ``nombre``, ``algoritmo``, ``escalar_numericas``,
+            ``columnas_excluidas``, ``hiperparametros`` y ``rejilla``.
+        validacion_cruzada: ``n_splits``, ``scoring`` y ``random_state``.
 
     Returns:
-        Pipeline de scikit-learn (preprocesamiento + modelo) ya entrenado.
+        El mejor modelo (preprocesamiento + clasificador) ya entrenado, y un
+        resumen de la búsqueda (nombre, mejores hiperparámetros y puntaje).
     """
+    algoritmo = ALGORITMOS[configuracion["algoritmo"]]
     modelo = Pipeline(
         [
-            ("preprocesamiento", crear_preprocesador(X_train, columnas_excluidas)),
-            ("clasificador", LogisticRegression(**hiperparametros)),
+            (
+                "preprocesamiento",
+                crear_preprocesador(
+                    X_train,
+                    configuracion["columnas_excluidas"],
+                    configuracion["escalar_numericas"],
+                ),
+            ),
+            ("clasificador", algoritmo(**configuracion["hiperparametros"])),
         ]
     )
-    return modelo.fit(X_train, y_train)
+    busqueda = GridSearchCV(
+        modelo,
+        param_grid={
+            f"clasificador__{param}": valores
+            for param, valores in configuracion["rejilla"].items()
+        },
+        scoring=validacion_cruzada["scoring"],
+        cv=StratifiedKFold(
+            n_splits=validacion_cruzada["n_splits"],
+            shuffle=True,
+            random_state=validacion_cruzada["random_state"],
+        ),
+        n_jobs=-1,
+    ).fit(X_train, y_train)
+
+    resumen = {
+        "modelo": configuracion["nombre"],
+        "mejores_hiperparametros": {
+            param.removeprefix("clasificador__"): valor
+            for param, valor in busqueda.best_params_.items()
+        },
+        f"{validacion_cruzada['scoring']}_validacion_cruzada": busqueda.best_score_,
+    }
+    return busqueda.best_estimator_, resumen

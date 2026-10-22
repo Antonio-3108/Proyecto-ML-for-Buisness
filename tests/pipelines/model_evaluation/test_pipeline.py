@@ -64,22 +64,34 @@ def test_evaluar_lineas_base(datos_prueba):
     assert regla["precision"] == pytest.approx(2 / 3)
 
 
+BUSQUEDA = {
+    "modelo": "Modelo de prueba",
+    "mejores_hiperparametros": {"C": 1},
+    "average_precision_validacion_cruzada": 0.8,
+}
+
+
 def test_evaluar_modelo_aplica_el_umbral(datos_prueba):
     X_test, y_test = datos_prueba
     modelo = ModeloFijo([0.9, 0.4, 0.6, 0.1])
 
-    con_umbral_alto = evaluar_modelo(modelo, X_test, y_test, umbral=0.5)
-    con_umbral_bajo = evaluar_modelo(modelo, X_test, y_test, umbral=0.3)
+    con_umbral_alto = evaluar_modelo(modelo, BUSQUEDA, X_test, y_test, umbral=0.5)
+    con_umbral_bajo = evaluar_modelo(modelo, BUSQUEDA, X_test, y_test, umbral=0.3)
 
     assert con_umbral_alto["recall"] == pytest.approx(0.5)
     assert con_umbral_bajo["recall"] == 1
     assert con_umbral_alto["roc_auc"] == con_umbral_bajo["roc_auc"]
+    assert con_umbral_alto["modelo"] == "Modelo de prueba"
+    assert con_umbral_alto["mejores_hiperparametros"] == "{'C': 1}"
 
 
 def test_comparar_modelos_une_lineas_base_y_modelos():
-    metricas = {"recall": 0.8, "precision": 0.6}
     lineas_base = pd.DataFrame({"Base": {"recall": 0.0, "precision": 0.0}}).T
+    evaluaciones = [
+        {"modelo": "Modelo A", "recall": 0.8, "precision": 0.6},
+        {"modelo": "Modelo B", "recall": 0.7, "precision": 0.7},
+    ]
 
-    resultado = comparar_modelos(lineas_base, metricas)
+    resultado = comparar_modelos(lineas_base, *evaluaciones)
 
-    assert resultado["modelo"].tolist() == ["Base", "Regresión logística"]
+    assert resultado["modelo"].tolist() == ["Base", "Modelo A", "Modelo B"]

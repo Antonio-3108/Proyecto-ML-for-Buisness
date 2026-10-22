@@ -7,7 +7,7 @@ import pytest
 from telco_churn.pipelines.model_training.nodes import (
     crear_preprocesador,
     dividir_datos,
-    entrenar_regresion_logistica,
+    entrenar_modelo,
 )
 
 CLIENTES = 100
@@ -48,24 +48,57 @@ def test_dividir_datos_es_estratificada_y_sin_fugas(features):
     assert not set(X_train.index) & set(X_test.index)
 
 
-def test_crear_preprocesador_codifica_escala_y_excluye(features):
+VALIDACION_CRUZADA = {"n_splits": 3, "scoring": "average_precision", "random_state": 0}
+
+
+@pytest.mark.parametrize("escalar", [True, False])
+def test_crear_preprocesador_codifica_y_excluye(features, escalar):
     X = features.drop(columns=["Customer ID", "Churn Value"])
 
-    transformado = crear_preprocesador(X, ["Total Charges"]).fit(X)
+    resultado = crear_preprocesador(X, ["Total Charges"], escalar).fit_transform(X)
 
-    columnas = list(transformado.get_feature_names_out())
+    columnas = list(
+        crear_preprocesador(X, ["Total Charges"], escalar)
+        .fit(X)
+        .get_feature_names_out()
+    )
     assert "Total Charges" not in columnas
     assert "Contract_Month-to-Month" in columnas
-    assert "Tenure in Months" in columnas
+    antiguedad = resultado[:, columnas.index("Tenure in Months")]
+    if escalar:
+        assert antiguedad.mean() == pytest.approx(0, abs=1e-9)
+    else:
+        assert antiguedad.tolist() == X["Tenure in Months"].tolist()
 
 
-def test_entrenar_regresion_logistica_predice_probabilidades(features):
+@pytest.mark.parametrize(
+    ("algoritmo", "escalar", "rejilla"),
+    [
+        ("regresion_logistica", True, {"C": [0.1, 1]}),
+        ("random_forest", False, {"max_depth": [2, None]}),
+        ("gradient_boosting", False, {"max_depth": [2, 3]}),
+    ],
+)
+def test_entrenar_modelo_elige_hiperparametros_de_la_rejilla(
+    features, algoritmo, escalar, rejilla
+):
     X_train, X_test, y_train, _ = dividir_datos(features, PARAMETROS_DIVISION)
+    configuracion = {
+        "nombre": algoritmo,
+        "algoritmo": algoritmo,
+        "escalar_numericas": escalar,
+        "columnas_excluidas": ["Total Charges"],
+        "hiperparametros": {"random_state": 0},
+        "rejilla": rejilla,
+    }
 
-    modelo = entrenar_regresion_logistica(
-        X_train, y_train, ["Total Charges"], {"max_iter": 1000}
+    modelo, resumen = entrenar_modelo(
+        X_train, y_train, configuracion, VALIDACION_CRUZADA
     )
 
     probabilidad = modelo.predict_proba(X_test)[:, 1]
-    assert probabilidad.shape == (len(X_test),)
     assert ((probabilidad >= 0) & (probabilidad <= 1)).all()
+    assert resumen["modelo"] == algoritmo
+    ((parametro, valores),) = rejilla.items()
+    assert resumen["mejores_hiperparametros"][parametro] in valores
+    assert 0 <= resumen["average_precision_validacion_cruzada"] <= 1
