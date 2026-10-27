@@ -15,13 +15,14 @@ def calcular_impacto_economico(
     supuestos: dict[str, Any],
     nombre: str,
 ) -> dict[str, float]:
-
     # Ordenar clientes por probabilidad de churn (mayor riesgo primero)
     ranking = probabilidad.sort_values(ascending=False)
 
     # Calcular la proporción de clientes que contactaríamos en la población total
     # (asumiendo que el conjunto de prueba es representativo)
-    proporcion_a_contactar = supuestos["clientes_a_contactar"] / 7043  # 7043 = total de clientes
+    proporcion_a_contactar = (
+        supuestos["clientes_a_contactar"] / 7043
+    )  # 7043 = total de clientes
 
     # Aplicar esa proporción al conjunto de prueba
     n_clientes_test = int(len(ranking) * proporcion_a_contactar)
@@ -58,6 +59,7 @@ def calcular_impacto_economico(
         "costo_campana": costo_campana,
         "ahorro_neto": ahorro_neto,
     }
+
 
 def evaluar_impacto_lineas_base(
     X_test: pd.DataFrame,

@@ -27,7 +27,9 @@ def sample_y_test():
 @pytest.fixture
 def sample_probabilidad():
     """Probabilidades de churn simples."""
-    return pd.Series([0.1, 0.9, 0.2, 0.8, 0.3, 0.7, 0.4, 0.6, 0.5, 0.5], index=range(10))
+    return pd.Series(
+        [0.1, 0.9, 0.2, 0.8, 0.3, 0.7, 0.4, 0.6, 0.5, 0.5], index=range(10)
+    )
 
 
 @pytest.fixture
@@ -41,7 +43,9 @@ def sample_supuestos():
     }
 
 
-def test_calcular_impacto_economico(sample_y_test, sample_probabilidad, sample_supuestos):
+def test_calcular_impacto_economico(
+    sample_y_test, sample_probabilidad, sample_supuestos
+):
     """Prueba el cálculo de impacto económico."""
     resultado = calcular_impacto_economico(
         sample_y_test, sample_probabilidad, sample_supuestos, "Test"
