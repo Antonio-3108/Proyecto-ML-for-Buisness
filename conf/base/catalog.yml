@@ -90,5 +90,19 @@ y_test:
 comparacion_modelos:
   type: pandas.CSVDataset
   filepath: data/08_reporting/comparacion_modelos.csv
+  load_args:
+    encoding: latin-1
   save_args:
     index: false
+    encoding: latin-1
+
+# --- Reporting: impacto de negocio (pipeline business_impact) ---------------
+
+comparacion_impacto:
+  type: pandas.CSVDataset
+  filepath: data/08_reporting/comparacion_impacto.csv
+  load_args:
+    encoding: latin-1
+  save_args:
+    index: true
+    encoding: latin-1

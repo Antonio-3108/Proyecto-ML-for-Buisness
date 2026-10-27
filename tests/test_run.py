@@ -5,6 +5,8 @@ from pathlib import Path
 from kedro.framework.session import KedroSession
 from kedro.framework.startup import bootstrap_project
 
+# ruff: noqa: PLR2004
+
 CLIENTES_EN_DATOS_CRUDOS = 7043
 COLUMNAS_LIMPIAS = 35  # 33 predictores + llave + objetivo
 VARIABLES_NUEVAS = 3  # cliente_nuevo, num_servicios, servicios_proteccion
@@ -53,3 +55,8 @@ def test_kedro_run_genera_tablas_de_clientes():
     modelos = comparacion[~es_linea_base]
     assert len(modelos) == MODELOS_CANDIDATOS
     assert (modelos["pr_auc"] > lineas_base["pr_auc"].max()).all()
+
+    # Verificar que el pipeline de impacto de negocio genera resultados
+    comparacion_impacto = catalog.load("comparacion_impacto")
+    assert len(comparacion_impacto) == 5  # 2 líneas base + 3 modelos
+    assert "ahorro_neto" in comparacion_impacto.columns

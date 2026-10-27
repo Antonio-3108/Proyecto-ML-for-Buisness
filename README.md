@@ -95,3 +95,26 @@ pytest
 - IBM Cognos Analytics, *Telco Customer Churn* (versión 11.1.3+).
 - Kaggle: aadityabansalcodes, *Telecommunications Industry Customer Churn Dataset*.
 - [Documentación de Kedro](https://docs.kedro.org).
+
+
+---
+
+| estrategia | clientes_contactados | clientes_detectados | clientes_retenidos | ingreso_retenido | costo_campana | ahorro_neto |
+| --- | --- | --- | --- | --- | --- | --- |
+| Contactar al azar | 2000 | 539.85 | 161.95 | 144139.07 | 100000 | 44139.07 |
+| Regla: Contract = Month-to-Month | 2000 | 889.75 | 266.92 | 237562.54 | 100000 | 137562.54 |
+| Regresión logística | 2000 | 1374.61 | 412.38 | 367020.78 | 100000 | 267020.78 |
+| Random Forest | 2000 | 1364.61 | 409.38 | 364351.54 | 100000 | 264351.54 |
+| Gradient Boosting | 2000 | 1394.60 | 418.38 | 372359.26 | 100000 | 272359.26 |
+
+Gradient Boosting es el mejor modelo:
+
+Métricas técnicas: Recall 0.850, PR-AUC 0.800, ROC-AUC 0.914
+Impacto económico: Ahorro neto de $272,359
+Detecta 1,395 churners de los 1,869 totales (~75%)
+Comparación de estrategias (contactando 2,000 clientes con $100,000 de presupuesto):
+
+Contactar al azar: $44,139 ahorro neto (detecta 540 churners)
+Regla de negocio (Month-to-Month): $137,563 ahorro neto (detecta 890 churners)
+Gradient Boosting: $272,359 ahorro neto (detecta 1,395 churners)
+El modelo mejora el ahorro neto en ~6x comparado con contactar al azar y ~2x comparado con la regla de negocio.
