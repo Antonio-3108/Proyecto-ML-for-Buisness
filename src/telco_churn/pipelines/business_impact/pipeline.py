@@ -1,7 +1,4 @@
-"""
-This is a boilerplate pipeline 'business_impact'
-generated using Kedro 1.7.0
-"""
+"""Pipeline de impacto de negocio: ahorro neto de la campaña por estrategia."""
 
 from kedro.pipeline import Node, Pipeline
 
@@ -11,6 +8,11 @@ from .nodes import comparar_impacto, evaluar_impacto_lineas_base, evaluar_impact
 
 
 def create_pipeline(**kwargs) -> Pipeline:
+    """Crea el pipeline de impacto de negocio.
+
+    Returns:
+        Pipeline que estima el ahorro neto de las líneas base y de cada modelo.
+    """
     lineas_base = Node(
         func=evaluar_impacto_lineas_base,
         inputs=[

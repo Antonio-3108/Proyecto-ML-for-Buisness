@@ -1,7 +1,4 @@
-"""
-This is a boilerplate pipeline 'business_impact'
-generated using Kedro 1.7.0
-"""
+"""Pipeline de impacto de negocio."""
 
 from .pipeline import create_pipeline
 

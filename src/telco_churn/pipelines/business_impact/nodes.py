@@ -1,6 +1,8 @@
-"""
-This is a boilerplate pipeline 'business_impact'
-generated using Kedro 1.7.0
+"""Nodos del pipeline de impacto de negocio.
+
+Estiman el ahorro neto de una campaña de retención que contacta a un número
+fijo de clientes (el presupuesto), según cómo se eligen esos clientes: al azar,
+con una regla de negocio o con el ranking de riesgo de cada modelo.
 """
 
 from typing import Any
@@ -9,56 +11,65 @@ import pandas as pd
 from sklearn.pipeline import Pipeline
 
 
+def _resumir_impacto(
+    nombre: str, clientes_detectados: float, supuestos: dict[str, Any]
+) -> dict[str, Any]:
+    """Convierte los clientes que se iban y fueron contactados en dinero.
+
+    Args:
+        nombre: Nombre de la estrategia.
+        clientes_detectados: Clientes contactados que realmente se iban
+            (escalado a toda la base de clientes).
+        supuestos: Supuestos de negocio de ``parameters_business_impact.yml``.
+
+    Returns:
+        Clientes detectados y retenidos, ingreso retenido, costo y ahorro neto.
+    """
+    clientes_retenidos = clientes_detectados * supuestos["tasa_exito_retencion"]
+    ingreso_retenido = clientes_retenidos * supuestos["ingreso_anual_promedio"]
+    costo_campana = supuestos["clientes_a_contactar"] * supuestos["costo_por_cliente"]
+    return {
+        "estrategia": nombre,
+        "clientes_contactados": supuestos["clientes_a_contactar"],
+        "clientes_detectados": clientes_detectados,
+        "clientes_retenidos": clientes_retenidos,
+        "ingreso_retenido": ingreso_retenido,
+        "costo_campana": costo_campana,
+        "ahorro_neto": ingreso_retenido - costo_campana,
+    }
+
+
 def calcular_impacto_economico(
     y_real: pd.Series,
     probabilidad: pd.Series,
     supuestos: dict[str, Any],
     nombre: str,
-) -> dict[str, float]:
-    # Ordenar clientes por probabilidad de churn (mayor riesgo primero)
-    ranking = probabilidad.sort_values(ascending=False)
+) -> dict[str, Any]:
+    """Estima el ahorro de contactar a los clientes con mayor riesgo.
 
-    # Calcular la proporción de clientes que contactaríamos en la población total
-    # (asumiendo que el conjunto de prueba es representativo)
+    Se contacta en el conjunto de prueba la misma proporción de clientes que
+    la campaña contacta en toda la base (2,000 de 7,043 = 28.4 %), elegidos de
+    mayor a menor probabilidad. Los clientes que se iban entre los contactados
+    se escalan a toda la base.
+
+    Args:
+        y_real: Objetivo real del conjunto de prueba (0/1).
+        probabilidad: Probabilidad de churn de cada cliente de prueba.
+        supuestos: Supuestos de negocio de ``parameters_business_impact.yml``.
+        nombre: Nombre de la estrategia.
+
+    Returns:
+        Resumen del impacto económico de la estrategia.
+    """
     proporcion_a_contactar = (
-        supuestos["clientes_a_contactar"] / 7043
-    )  # 7043 = total de clientes
+        supuestos["clientes_a_contactar"] / supuestos["total_clientes"]
+    )
+    n_contactados = max(int(len(y_real) * proporcion_a_contactar), 1)
+    contactados = probabilidad.sort_values(ascending=False).head(n_contactados)
 
-    # Aplicar esa proporción al conjunto de prueba
-    n_clientes_test = int(len(ranking) * proporcion_a_contactar)
-    n_clientes_test = max(n_clientes_test, 1)  # al menos 1 cliente
-
-    # Contactar a los N clientes con mayor riesgo en el conjunto de prueba
-    clientes_a_contactar = ranking.head(n_clientes_test)
-
-    # Entre los contactados, ¿cuántos realmente se iban?
-    churners_detectados = y_real[clientes_a_contactar.index].sum()
-
-    # Escalar a la población total
-    factor_escala = 7043 / len(y_real)
-    churners_detectados_total = churners_detectados * factor_escala
-
-    # De esos churners detectados, ¿cuántos se retienen con la oferta?
-    clientes_retenidos = churners_detectados_total * supuestos["tasa_exito_retencion"]
-
-    # Ingreso anual retenido
-    ingreso_retenido = clientes_retenidos * supuestos["ingreso_anual_promedio"]
-
-    # Costo de la campaña (según el presupuesto original)
-    costo_campana = supuestos["clientes_a_contactar"] * supuestos["costo_por_cliente"]
-
-    # Ahorro neto
-    ahorro_neto = ingreso_retenido - costo_campana
-
-    return {
-        "estrategia": nombre,
-        "clientes_contactados": supuestos["clientes_a_contactar"],
-        "clientes_detectados": churners_detectados_total,
-        "clientes_retenidos": clientes_retenidos,
-        "ingreso_retenido": ingreso_retenido,
-        "costo_campana": costo_campana,
-        "ahorro_neto": ahorro_neto,
-    }
+    detectados_en_prueba = y_real[contactados.index].sum()
+    factor_escala = supuestos["total_clientes"] / len(y_real)
+    return _resumir_impacto(nombre, detectados_en_prueba * factor_escala, supuestos)
 
 
 def evaluar_impacto_lineas_base(
@@ -66,23 +77,38 @@ def evaluar_impacto_lineas_base(
     y_test: pd.Series,
     regla_negocio: dict[str, str],
     supuestos: dict[str, Any],
-) -> list[dict[str, float]]:
-    probabilidad_azar = pd.Series(0.5, index=y_test.index)
-    impacto_azar = calcular_impacto_economico(
-        y_test, probabilidad_azar, supuestos, "Contactar al azar"
-    )
-    cumple_regla = (
-        X_test[regla_negocio["columna"]].eq(regla_negocio["valor"]).astype(int)
-    )
-    probabilidad_regla = cumple_regla.astype(float)
-    impacto_regla = calcular_impacto_economico(
-        y_test,
-        probabilidad_regla,
-        supuestos,
-        f"Regla: {regla_negocio['columna']} = {regla_negocio['valor']}",
-    )
+) -> list[dict[str, Any]]:
+    """Estima el ahorro esperado de las estrategias sin modelo.
 
-    return [impacto_azar, impacto_regla]
+    Ninguna de las dos ordena a los clientes, así que se usa el **valor
+    esperado** (clientes contactados x tasa de churn del grupo) en lugar de
+    tomar los primeros clientes de la tabla, cuyo resultado dependería del
+    orden de las filas.
+
+    - **Contactar al azar:** tasa de churn de todos los clientes.
+    - **Regla de negocio:** tasa de churn de los clientes que cumplen la regla
+      (por defecto, contrato mes a mes).
+
+    Args:
+        X_test: Variables de prueba.
+        y_test: Objetivo de prueba.
+        regla_negocio: ``columna`` y ``valor`` que definen la regla.
+        supuestos: Supuestos de negocio de ``parameters_business_impact.yml``.
+
+    Returns:
+        Resumen del impacto de cada línea base.
+    """
+    cumple_regla = X_test[regla_negocio["columna"]].eq(regla_negocio["valor"])
+    tasas = {
+        "Contactar al azar": y_test.mean(),
+        f"Regla: {regla_negocio['columna']} = {regla_negocio['valor']}": y_test[
+            cumple_regla
+        ].mean(),
+    }
+    return [
+        _resumir_impacto(nombre, supuestos["clientes_a_contactar"] * tasa, supuestos)
+        for nombre, tasa in tasas.items()
+    ]
 
 
 def evaluar_impacto_modelo(
@@ -91,18 +117,37 @@ def evaluar_impacto_modelo(
     X_test: pd.DataFrame,
     y_test: pd.Series,
     supuestos: dict[str, Any],
-) -> dict[str, float]:
+) -> dict[str, Any]:
+    """Estima el ahorro de contactar a los clientes que el modelo ve más riesgosos.
+
+    Args:
+        modelo: Modelo entrenado con ``predict_proba``.
+        busqueda: Resumen de GridSearchCV (se usa el nombre del modelo).
+        X_test: Variables de prueba.
+        y_test: Objetivo de prueba.
+        supuestos: Supuestos de negocio de ``parameters_business_impact.yml``.
+
+    Returns:
+        Resumen del impacto económico del modelo.
+    """
     probabilidad = pd.Series(modelo.predict_proba(X_test)[:, 1], index=y_test.index)
-    impacto = calcular_impacto_economico(
+    return calcular_impacto_economico(
         y_test, probabilidad, supuestos, busqueda["modelo"]
     )
-    return impacto
 
 
 def comparar_impacto(
-    lineas_base: list[dict[str, float]],
-    *impactos_modelos: dict[str, float],
+    lineas_base: list[dict[str, Any]],
+    *impactos_modelos: dict[str, Any],
 ) -> pd.DataFrame:
-    todos_los_impactos = lineas_base + list(impactos_modelos)
-    tabla = pd.DataFrame(todos_los_impactos).set_index("estrategia")
+    """Reúne el impacto de las líneas base y los modelos en una tabla.
+
+    Args:
+        lineas_base: Impacto de cada línea base.
+        *impactos_modelos: Impacto de cada modelo.
+
+    Returns:
+        Tabla con una fila por estrategia, redondeada a 2 decimales.
+    """
+    tabla = pd.DataFrame([*lineas_base, *impactos_modelos]).set_index("estrategia")
     return tabla.round(2)

@@ -86,6 +86,3 @@ select = [
 ignore = [
     "E501",
 ]
-
-[tool.kedro_telemetry]
-project_id = "786727fa651841519ea1b64d00d1d6f5"

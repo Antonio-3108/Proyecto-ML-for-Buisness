@@ -1,19 +1,19 @@
-# This is a boilerplate parameters config generated for pipeline 'business_impact'
-# using Kedro 1.7.0.
-#
-# Documentation for this file format can be found in "Parameters"
-# Link: https://docs.kedro.org/en/1.7.0/configuration/parameters.html
+# Parámetros del pipeline 'business_impact'.
+# Supuestos de negocio de docs/problema_de_negocio.md.
 
 business_impact:
   supuestos:
-    # Ingreso anual promedio de un cliente que se va
+    # Ingreso anual promedio de un cliente que se va (~$74 al mes x 12)
     ingreso_anual_promedio: 890
-    
+
     # Costo de la acción de retención por cliente (llamada, descuento, etc.)
     costo_por_cliente: 50
-    
+
     # Tasa de éxito de la retención (cliente contactado que se queda)
     tasa_exito_retencion: 0.3
-    
+
     # Número de clientes que la campaña puede contactar (según presupuesto)
     clientes_a_contactar: 2000
+
+    # Total de clientes de la empresa (para escalar los resultados de prueba)
+    total_clientes: 7043
